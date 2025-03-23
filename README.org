@@ -1,1 +1,67 @@
 #+title: BST
+
+* Sample usage
+
+#+begin_src bash
+> bst
+Schedule
+--------------------------
+08:00
+09:00
+10:00
+11:00 Busy
+12:00
+13:00 Busy
+--------------------------
+Tasks
+--------------------------
+1 Tidy up the basement
+2 Buy milk
+3 Study French
+--------------------------
+Menu: (n)th task schedule (r)eschedule task (s)ort (z)oom-in schedule (Z)oom-out schedule (]) next day (w)eek view
+#+end_src
+
+- When you select a task (typing the number corresponding to it), it immediately shows its details (at least, start and end times, and duration), and highlights the holes in the schedule where it fits.
+- When you select a task (typing the number corresponding to it), the holes it fits in are highlighted, and numbers appear next to them, so that you can select one.
+- When you select a hole, the selected task is scheduled in that block.
+- When you select reschedule, the scheduled tasks will be marked with a number to their left, so that you can select which task you want to reschedule. Yo select it, and then, the process continues as if the task wasn't scheduled (but you can abort the rescheduling and get back to the initial state).
+
+There are two sources of information: the calendar (Google) and the tasks lists (Todoist).
+
+Here, we are creating events out of tasks: scheduling a task is the same as creating an event linked to that task. The information should be kept both in the task (I think the schedule fields they have are enough for this) and on the event (this is already done by Todoist, and I should stay consistent with that, so that my schedules can be handled through Todoist web app).
+
+Looks like it should be a curses app. But I would also like to create a pure CLI app. So, maybe I should design both a TUI and a CLI.
+
+Finally, I'll create an Emacs app (using a buffer as the TUI).
+
+* The CLI
+
+Actions:
+- show the schedule (filters and views allowed)
+- show the task list (filters and views allowed)
+- show possible locations for a task (tentative schedule)
+- schedule a task at a point
+- edit the scheduling of a scheduled task
+- remove the scheduling of a scheduled task
+
+** TODO Decide if use my own CLI or the shell
+
+There are two options for the CLI:
+- run commands directly from the shell (like subcommands of a main command);
+- open a new CLI where you can only write the subcommands specific to the app.
+
+Advantages of my own CLI:
+- It's easier for the user to remember the commands, and easier for the app to provide the user with contextual help.
+- It's easier for the app to keep the current state, so that commands can build incrementally their effects.
+- No clashes with other programs.
+- Commands will be way shorter for the user, because we can take current state into account.
+
+Advantages of using the shell:
+- No need to start and quit.
+- Commands can be interspersed with other commands the user might want to execute while scheduling.
+- Lot's of functionality is already at my disposal (e.g., autocompletion).
+
+Is it a good idea to offer both options (in the same guise as Python gives you an interactive repl and the possibility to run scripts from the command line)?
+
+Should I keep track of the usage of the tool (implement sessions) to allow for incremental commands?
