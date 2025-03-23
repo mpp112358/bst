@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+import cmd
+
+from rich.console import Console
+from rich.markdown import Markdown
+
+import itertools
 
 from datetime import datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -10,12 +16,22 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+from todoist_api_python.api import TodoistAPI
+
+todoistapi = TodoistAPI("REDACTED")
+
+def tasks(client, quantity):
+    "List unscheduled tasks."
+    try:
+        tasks = todoistapi.get_tasks(filter="no date")
+        for task in itertools.islice(tasks, quantity):
+            client.console.print(Markdown(f"- {task.content}"))
+    except Exception as error:
+        client.console.print(error)
+
+
 # If modifying these scopes, delete the file token.json.
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
-
-
-def printEvent(event, date, startTime):
-    pass
 
 
 def timeToSlotIndex(timeVal, firstSlotTimeVal):
@@ -62,10 +78,10 @@ def slotHourAndMin(slotIndex, minutesPerSlot):
     return hour, minutes
 
 
-def printSlots(minuteSlots, minutesPerSlot):
+def printSlots(client, minuteSlots, minutesPerSlot):
     for slot in range(len(minuteSlots) // minutesPerSlot):
         hour, minute = slotHourAndMin(slot, minutesPerSlot)
-        print(f"{hour:02.0f}:{minute:02.0f} ", end="")
+        client.console.print(f"{hour:02.0f}:{minute:02.0f} ", end="")
         zoomedMinuteSlot = minuteSlots[
             slot * minutesPerSlot : slot * minutesPerSlot + minutesPerSlot
         ]
@@ -81,16 +97,25 @@ def printSlots(minuteSlots, minutesPerSlot):
                 "dateTime", event["event"]["start"].get("date")
             )
             if i == len(eventsToPrint) - 1:
-                print(event["event"]["summary"], end="")
+                client.console.print(event["event"]["summary"], end="")
             else:
-                print(f"{event['event']['summary']} || ", end="")
-        print("\n")
+                client.console.print(f"{event['event']['summary']} || ", end="")
+        client.console.print("\n")
 
 
-def main():
-    """Shows basic usage of the Google Calendar API.
-    Prints the start and name of the next 10 events on the user's calendar.
+def getEvents(fromDatetime=None, toDatetime=None, number=None):
+    """Returns a list of events from Google Calendar API
+    spanning from 'fromDatetime' to 'toDatetime';
+    limiting the list to a maximum of 'number' items if 'number' is not None.
+    By default, 'fromDatetime' is now, and 'toDatetime' is the end of today.
     """
+    now = datetime.utcnow().isoformat() + "Z"  # 'Z' indicates UTC time
+    if not fromDatetime:
+        fromDatetime = now
+    endOfDay = datetime.combine(datetime.utcnow(), time(23, 59)).isoformat() + "Z"
+    if not toDatetime:
+        toDatetime = endOfDay
+
     creds = None
     # The file token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
@@ -112,11 +137,6 @@ def main():
         service = build("calendar", "v3", credentials=creds)
 
         # Call the Calendar API
-        now = datetime.utcnow().isoformat() + "Z"  # 'Z' indicates UTC time
-        endOfDay = datetime.combine(datetime.utcnow(), time(23, 59)).isoformat() + "Z"
-        print(now)
-        print(endOfDay)
-        print("Getting the upcoming 10 events")
         events_result = (
             service.events()
             .list(
@@ -130,27 +150,46 @@ def main():
             .execute()
         )
         events = events_result.get("items", [])
-
-        if not events:
-            print("No upcoming events found.")
-            return
-
-        # Prints the start and name of the next 10 events
-        for event in events:
-            start = event["start"].get("dateTime", event["start"].get("date"))
-            startTime = datetime.fromisoformat(start).hour
-            print(start, startTime, event["summary"])
-
-        now = datetime.combine(datetime.now(), time(0, 0))
-        firstSlotTimeVal = now.astimezone(ZoneInfo("Europe/Madrid"))
-        print(firstSlotTimeVal)
-        minuteSlots = [[] for _ in range(24 * 60)]
-        fillMinuteSlots(firstSlotTimeVal, minuteSlots, events)
-        printSlots(minuteSlots, 30)
+        return events
 
     except HttpError as error:
-        print(f"An error occurred: {error}")
+        client.console.print(f"An error occurred: {error}")
 
+
+def today(client, interval=30):
+    """Prints today's schedule in the given interval (in minutes)
+    """
+    events = getEvents()
+    if events:
+        now = datetime.combine(datetime.now(), time(0, 0))
+        firstSlotTimeVal = now.astimezone(ZoneInfo("Europe/Madrid"))
+        minuteSlots = [[] for _ in range(24 * 60)]
+        fillMinuteSlots(firstSlotTimeVal, minuteSlots, events)
+        printSlots(client, minuteSlots, interval)
+
+
+class CalendarClient(cmd.Cmd):
+    intro = "Type 'help' or '?' for commands."
+    prompt = "> "
+
+    def __init__(self):
+        super().__init__()
+        self.console = Console()
+
+    # Command today
+    def do_today(self, arg):
+        "List today's block schedule: today [n minutes intervals]."
+        interval = int(arg) if arg else 30
+        today(self, interval)
+
+    def do_tasks(self, arg):
+        "List not scheduled tasks: tasks."
+        quantity = int(arg) if arg else 10
+        tasks(self, quantity)
+
+    def do_exit(self, args):
+        "Exit the scheduler."
+        return True
 
 if __name__ == "__main__":
-    main()
+    CalendarClient().cmdloop()

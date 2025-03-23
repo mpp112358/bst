@@ -65,3 +65,25 @@ Advantages of using the shell:
 Is it a good idea to offer both options (in the same guise as Python gives you an interactive repl and the possibility to run scripts from the command line)?
 
 Should I keep track of the usage of the tool (implement sessions) to allow for incremental commands?
+
+** TODO Keep a cache of tasks and events?
+
+Should I read the list of tasks and events once, when the command is invoked, or every time a subcommand is invoked?
+
+Advantages of a cache:
+- The program is faster, because we save connection time.
+- I use less of the API capacity.
+
+** ~today~ command
+
+Syntax: ~today [int]~
+
+Shows today's schedule in intervals of ~int~ minutes.
+
+Every interval starts at a multiple of ~int~ minutes, and ends in the next multiple. Hence, intervals are of the form \(\left[k \cdot \text{int}, (k + 1) \cdot \text{int}\right)\), where \(k \in \left\{0,\hdots,60/\text{int}\right\}\).
+
+For every interval, it will print the start time of the interval in the format ~hh:mm~ followed by the summaries of all events whose starting datetime belongs to this or a previous interval and whose end datetime belongs to this or a later interval. Events printed on the same interval are separated by ~||~.
+
+If no event lies on this interval, it will be printed using the ~free-interval-format~ (see ~interval-formats~ below).
+
+** interval-formats
