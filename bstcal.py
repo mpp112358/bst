@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 import cmd
 
+from dotenv import load_dotenv
+import os
+
+from urllib.parse import quote
+
 from rich.console import Console
 from rich.markdown import Markdown
 
@@ -18,14 +23,17 @@ from googleapiclient.errors import HttpError
 
 from todoist_api_python.api import TodoistAPI
 
-todoistapi = TodoistAPI("REDACTED")
+load_dotenv()
+todoistapi = os.getenv("TODOIST_API_KEY")
 
-def tasks(client, quantity):
-    "List unscheduled tasks."
+def tasks(client, taskfilter, quantity):
+    "List tasks grouped by due time."
     try:
-        tasks = todoistapi.get_tasks(filter="no date")
+        tasks = todoistapi.get_tasks(filter=taskfilter)
+        tasklist = ""
         for task in itertools.islice(tasks, quantity):
-            client.console.print(Markdown(f"- {task.content}"))
+            tasklist = tasklist + f"\n- {task.content}"
+        client.console.print(Markdown(tasklist))
     except Exception as error:
         client.console.print(error)
 
@@ -182,10 +190,19 @@ class CalendarClient(cmd.Cmd):
         interval = int(arg) if arg else 30
         today(self, interval)
 
-    def do_tasks(self, arg):
+    def do_tasks(self, args):
         "List not scheduled tasks: tasks."
-        quantity = int(arg) if arg else 10
-        tasks(self, quantity)
+        parts = args.strip().split() if args else None
+        if parts and len(parts) > 1:
+            quantitystr = parts[0]
+            quantity = int(quantitystr)
+        else:
+            quantity = 10
+        if parts and len(parts) > 2:
+            taskfilter = " ".join(parts[1:])
+        else:
+            taskfilter = "no date"
+        tasks(self, taskfilter, quantity)
 
     def do_exit(self, args):
         "Exit the scheduler."

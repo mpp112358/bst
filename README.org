@@ -87,3 +87,9 @@ For every interval, it will print the start time of the interval in the format ~
 If no event lies on this interval, it will be printed using the ~free-interval-format~ (see ~interval-formats~ below).
 
 ** interval-formats
+
+** ~tasks~ command
+
+Syntax: ~tasks [filter]~
+
+Shows the list of active tasks, grouped by due time, possible filtered by the ~filter~ provided, which must be written in the filter language of todoit.
