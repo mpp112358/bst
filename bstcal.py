@@ -24,15 +24,40 @@ from googleapiclient.errors import HttpError
 from todoist_api_python.api import TodoistAPI
 
 load_dotenv()
-todoistapi = os.getenv("TODOIST_API_KEY")
+todoistapi = TodoistAPI(os.getenv("TODOIST_API_KEY"))
+
+def noDateTasks(tasks):
+    filteredTasks = []
+    for task in tasks:
+        if not task.due:
+            filteredTasks.append(task)
+    return filteredTasks
+
+def todayTasks(tasks):
+    filteredTasks = []
+    for task in tasks:
+        if task.due:
+            if task.due.datetime:
+                dt = datetime.fromisoformat(task.due.datetime)
+                if dt.date() == datetime.now().date():
+                    filteredTasks.append(task)
 
 def tasks(client, taskfilter, quantity):
     "List tasks grouped by due time."
     try:
-        tasks = todoistapi.get_tasks(filter=taskfilter)
-        tasklist = ""
-        for task in itertools.islice(tasks, quantity):
-            tasklist = tasklist + f"\n- {task.content}"
+        tasks = todoistapi.get_tasks()
+        if not quantity:
+            quantity = len(tasks)
+        tasklist = "# No date"
+        filteredTasks = noDateTasks(tasks)
+        if filteredTasks:
+            for task in itertools.islice(filteredTasks, quantity):
+                tasklist = tasklist + f"\n- {task.content}"
+        tasklist = tasklist + f"\n# Today"
+        tTasks = todayTasks(tasks)
+        if tTasks:
+            for task in itertools.islice(tTasks, quantity):
+                tasklist = tasklist + f"\n- {task.content}"
         client.console.print(Markdown(tasklist))
     except Exception as error:
         client.console.print(error)
@@ -197,7 +222,7 @@ class CalendarClient(cmd.Cmd):
             quantitystr = parts[0]
             quantity = int(quantitystr)
         else:
-            quantity = 10
+            quantity = None
         if parts and len(parts) > 2:
             taskfilter = " ".join(parts[1:])
         else:
