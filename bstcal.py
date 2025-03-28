@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import cmd
+import ipdb
 
 from dotenv import load_dotenv
 import os
@@ -33,14 +34,15 @@ def noDateTasks(tasks):
             filteredTasks.append(task)
     return filteredTasks
 
-def todayTasks(tasks):
+def overdueTasks(tasks):
     filteredTasks = []
     for task in tasks:
         if task.due:
             if task.due.datetime:
                 dt = datetime.fromisoformat(task.due.datetime)
-                if dt.date() == datetime.now().date():
+                if dt.date() <= datetime.now().date():
                     filteredTasks.append(task)
+    return filteredTasks
 
 def tasks(client, taskfilter, quantity):
     "List tasks grouped by due time."
@@ -54,10 +56,13 @@ def tasks(client, taskfilter, quantity):
             for task in itertools.islice(filteredTasks, quantity):
                 tasklist = tasklist + f"\n- {task.content}"
         tasklist = tasklist + f"\n# Today"
-        tTasks = todayTasks(tasks)
+        tTasks = overdueTasks(tasks)
         if tTasks:
             for task in itertools.islice(tTasks, quantity):
                 tasklist = tasklist + f"\n- {task.content}"
+        tasklist = tasklist + f"\n# All"
+        for task in itertools.islice(tasks, quantity):
+            tasklist = tasklist + f"\n- {task.content}"
         client.console.print(Markdown(tasklist))
     except Exception as error:
         client.console.print(error)

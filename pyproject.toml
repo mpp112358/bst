@@ -8,6 +8,7 @@ dependencies = [
     "google-api-python-client>=2.165.0",
     "google-auth-httplib2>=0.2.0",
     "google-auth-oauthlib>=1.2.1",
+    "ipdb>=0.13.13",
     "python-dotenv>=1.1.0",
     "rich>=13.9.4",
     "todoist-api-python>=2.1.7",
